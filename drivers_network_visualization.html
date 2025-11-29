@@ -1,0 +1,270 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Asset-Driver Network Visualization</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        #network {
+            background-color: white;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .node {
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .node:hover {
+            stroke-width: 3px;
+        }
+        .node.highlighted {
+            stroke: #000;
+            stroke-width: 3px;
+        }
+        .link {
+            stroke: #999;
+            stroke-opacity: 0.6;
+            transition: all 0.3s ease;
+        }
+        .link.highlighted {
+            stroke: #555;
+            stroke-opacity: 1;
+            stroke-width: 3px;
+        }
+        .link.dimmed {
+            stroke-opacity: 0.1;
+        }
+        .node-label {
+            font-size: 11px;
+            font-weight: 600;
+            pointer-events: none;
+            text-shadow: 0 1px 2px white, 1px 0 2px white, -1px 0 2px white, 0 -1px 2px white;
+        }
+        .legend {
+            position: absolute;
+            top: 30px;
+            right: 30px;
+            background: white;
+            padding: 15px;
+            border-radius: 6px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            font-size: 13px;
+        }
+        .legend-item {
+            margin: 8px 0;
+            display: flex;
+            align-items: center;
+        }
+        .legend-color {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            margin-right: 8px;
+            border: 2px solid #333;
+        }
+        .tooltip {
+            position: absolute;
+            padding: 10px;
+            background: rgba(0, 0, 0, 0.85);
+            color: white;
+            border-radius: 4px;
+            font-size: 12px;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s;
+            max-width: 200px;
+        }
+        h2 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 10px;
+        }
+        .instructions {
+            text-align: center;
+            color: #666;
+            font-size: 13px;
+            margin-bottom: 15px;
+        }
+    </style>
+</head>
+<body>
+    <h2>Asset-Driver Network: Market Interdependence</h2>
+    <p class="instructions">Hover over nodes to highlight connections • Click to focus on specific relationships</p>
+    <div id="network"></div>
+    <div class="legend">
+        <div style="font-weight: bold; margin-bottom: 10px;">Node Types</div>
+        <div class="legend-item">
+            <div class="legend-color" style="background-color: #4CAF50;"></div>
+            <span>Equity (SPY)</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background-color: #2196F3;"></div>
+            <span>Cryptocurrency</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background-color: #FF9800;"></div>
+            <span>Driver/Company</span>
+        </div>
+    </div>
+    <div class="tooltip" id="tooltip"></div>
+    
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script>
+        // Network data
+        const data = {"nodes": [{"id": "SPY", "name": "SPY", "type": "equity", "group": 1}, {"id": "BTC-USD", "name": "BTC-USD", "type": "crypto", "group": 2}, {"id": "ETH-USD", "name": "ETH-USD", "type": "crypto", "group": 2}, {"id": "XRP-USD", "name": "XRP-USD", "type": "crypto", "group": 2}, {"id": "LTC-USD", "name": "LTC-USD", "type": "crypto", "group": 2}, {"id": "BNB-USD", "name": "BNB-USD", "type": "crypto", "group": 2}, {"id": "Apple", "name": "Apple", "type": "driver", "group": 3}, {"id": "Microsoft", "name": "Microsoft", "type": "driver", "group": 3}, {"id": "Amazon", "name": "Amazon", "type": "driver", "group": 3}, {"id": "Coinbase", "name": "Coinbase", "type": "driver", "group": 3}, {"id": "MicroStrategy", "name": "MicroStrategy", "type": "driver", "group": 3}, {"id": "Nvidia", "name": "Nvidia", "type": "driver", "group": 3}, {"id": "Lido Finance", "name": "Lido Finance", "type": "driver", "group": 3}, {"id": "Consensys", "name": "Consensys", "type": "driver", "group": 3}, {"id": "Ripple", "name": "Ripple", "type": "driver", "group": 3}, {"id": "Binance", "name": "Binance", "type": "driver", "group": 3}, {"id": "Antpool", "name": "Antpool", "type": "driver", "group": 3}, {"id": "Bitmain", "name": "Bitmain", "type": "driver", "group": 3}, {"id": "Binance Smart Chain projects", "name": "Binance Smart Chain projects", "type": "driver", "group": 3}, {"id": "Paxos", "name": "Paxos", "type": "driver", "group": 3}], "links": [{"source": "SPY", "target": "Apple", "value": 1}, {"source": "SPY", "target": "Microsoft", "value": 1}, {"source": "SPY", "target": "Amazon", "value": 1}, {"source": "BTC-USD", "target": "Coinbase", "value": 1}, {"source": "BTC-USD", "target": "MicroStrategy", "value": 1}, {"source": "BTC-USD", "target": "Nvidia", "value": 1}, {"source": "ETH-USD", "target": "Coinbase", "value": 1}, {"source": "ETH-USD", "target": "Lido Finance", "value": 1}, {"source": "ETH-USD", "target": "Consensys", "value": 1}, {"source": "XRP-USD", "target": "Ripple", "value": 1}, {"source": "XRP-USD", "target": "Coinbase", "value": 1}, {"source": "XRP-USD", "target": "Binance", "value": 1}, {"source": "LTC-USD", "target": "Coinbase", "value": 1}, {"source": "LTC-USD", "target": "Antpool", "value": 1}, {"source": "LTC-USD", "target": "Bitmain", "value": 1}, {"source": "BNB-USD", "target": "Binance", "value": 1}, {"source": "BNB-USD", "target": "Binance Smart Chain projects", "value": 1}, {"source": "BNB-USD", "target": "Paxos", "value": 1}]};
+        
+        // Set up dimensions
+        const width = 1000;
+        const height = 700;
+        
+        // Create SVG
+        const svg = d3.select("#network")
+            .append("svg")
+            .attr("width", width)
+            .attr("height", height)
+            .attr("viewBox", [0, 0, width, height]);
+        
+        // Define color scale
+        const colorScale = d3.scaleOrdinal()
+            .domain(["equity", "crypto", "driver"])
+            .range(["#4CAF50", "#2196F3", "#FF9800"]);
+        
+        // Create force simulation
+        const simulation = d3.forceSimulation(data.nodes)
+            .force("link", d3.forceLink(data.links)
+                .id(d => d.id)
+                .distance(80)
+            )
+            .force("charge", d3.forceManyBody()
+                .strength(-300)
+            )
+            .force("center", d3.forceCenter(width / 2, height / 2))
+            .force("collision", d3.forceCollide().radius(30));
+        
+        // Create links
+        const link = svg.append("g")
+            .selectAll("line")
+            .data(data.links)
+            .join("line")
+            .attr("class", "link")
+            .attr("stroke-width", 2);
+        
+        // Create node groups
+        const node = svg.append("g")
+            .selectAll("g")
+            .data(data.nodes)
+            .join("g")
+            .attr("class", "node")
+            .call(drag(simulation));
+        
+        // Add circles to nodes
+        node.append("circle")
+            .attr("r", d => d.type === "driver" ? 10 : 15)
+            .attr("fill", d => colorScale(d.type))
+            .attr("stroke", "#fff")
+            .attr("stroke-width", 2);
+        
+        // Add labels to nodes
+        node.append("text")
+            .attr("class", "node-label")
+            .attr("dx", 0)
+            .attr("dy", d => d.type === "driver" ? -15 : -20)
+            .attr("text-anchor", "middle")
+            .text(d => d.name)
+            .style("font-size", d => d.type === "driver" ? "10px" : "12px");
+        
+        // Tooltip
+        const tooltip = d3.select("#tooltip");
+        
+        // Node interactions
+        node.on("mouseover", function(event, d) {
+            // Highlight connected nodes and links
+            const connectedNodes = new Set();
+            connectedNodes.add(d.id);
+            
+            link.classed("dimmed", l => {
+                if (l.source.id === d.id || l.target.id === d.id) {
+                    connectedNodes.add(l.source.id);
+                    connectedNodes.add(l.target.id);
+                    return false;
+                }
+                return true;
+            })
+            .classed("highlighted", l => l.source.id === d.id || l.target.id === d.id);
+            
+            node.classed("highlighted", n => connectedNodes.has(n.id))
+                .style("opacity", n => connectedNodes.has(n.id) ? 1 : 0.3);
+            
+            // Show tooltip
+            const connections = data.links
+                .filter(l => l.source.id === d.id || l.target.id === d.id)
+                .map(l => l.source.id === d.id ? l.target.name : l.source.name);
+            
+            tooltip.style("opacity", 1)
+                .html(`
+                    <strong>${d.name}</strong><br>
+                    Type: ${d.type}<br>
+                    Connections: ${connections.length}<br>
+                    <small>${connections.join(", ")}</small>
+                `)
+                .style("left", (event.pageX + 10) + "px")
+                .style("top", (event.pageY - 10) + "px");
+        })
+        .on("mouseout", function() {
+            link.classed("dimmed", false)
+                .classed("highlighted", false);
+            node.classed("highlighted", false)
+                .style("opacity", 1);
+            tooltip.style("opacity", 0);
+        })
+        .on("click", function(event, d) {
+            event.stopPropagation();
+            console.log("Clicked node:", d);
+        });
+        
+        // Update positions on simulation tick
+        simulation.on("tick", () => {
+            link
+                .attr("x1", d => d.source.x)
+                .attr("y1", d => d.source.y)
+                .attr("x2", d => d.target.x)
+                .attr("y2", d => d.target.y);
+            
+            node
+                .attr("transform", d => `translate(${d.x},${d.y})`);
+        });
+        
+        // Drag functions
+        function drag(simulation) {
+            function dragstarted(event) {
+                if (!event.active) simulation.alphaTarget(0.3).restart();
+                event.subject.fx = event.subject.x;
+                event.subject.fy = event.subject.y;
+            }
+            
+            function dragged(event) {
+                event.subject.fx = event.x;
+                event.subject.fy = event.y;
+            }
+            
+            function dragended(event) {
+                if (!event.active) simulation.alphaTarget(0);
+                event.subject.fx = null;
+                event.subject.fy = null;
+            }
+            
+            return d3.drag()
+                .on("start", dragstarted)
+                .on("drag", dragged)
+                .on("end", dragended);
+        }
+    </script>
+</body>
+</html>
