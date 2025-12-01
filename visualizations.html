@@ -1,0 +1,775 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DS4200: Cryptocurrency vs Stock Market Analysis</title>
+    
+    <!-- D3.js for network visualization -->
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    
+    <!-- Vega and Vega-Lite for Altair charts -->
+    <script src="https://cdn.jsdelivr.net/npm/vega@5"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vega-lite@5"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vega-embed@6"></script>
+    
+    <!-- Chart.js for matplotlib-style charts -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-matrix@2.0.1/dist/chartjs-chart-matrix.min.js"></script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px;
+            text-align: center;
+        }
+        
+        header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        header p {
+            font-size: 1.2em;
+            opacity: 0.95;
+        }
+        
+        .viz-section {
+            padding: 40px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+        
+        .viz-section:last-child {
+            border-bottom: none;
+        }
+        
+        .viz-section h2 {
+            color: #667eea;
+            font-size: 2em;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 3px solid #667eea;
+        }
+        
+        .viz-section .subtitle {
+            color: #666;
+            font-style: italic;
+            margin-bottom: 20px;
+            font-size: 1.1em;
+        }
+        
+        .viz-container {
+            background: #f9f9f9;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
+        .interpretation {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 20px;
+            margin-top: 20px;
+            border-radius: 5px;
+        }
+        
+        .interpretation h3 {
+            color: #856404;
+            margin-bottom: 10px;
+        }
+        
+        .interpretation p {
+            line-height: 1.6;
+            color: #333;
+        }
+        
+        canvas {
+            max-width: 100%;
+            height: auto;
+        }
+        
+        /* Network visualization specific styles */
+        #network {
+            background-color: white;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            min-height: 700px;
+        }
+        
+        .node {
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .node:hover {
+            stroke-width: 3px;
+        }
+        
+        .node.highlighted {
+            stroke: #000;
+            stroke-width: 3px;
+        }
+        
+        .link {
+            stroke: #999;
+            stroke-opacity: 0.6;
+            transition: all 0.3s ease;
+        }
+        
+        .link.highlighted {
+            stroke: #555;
+            stroke-opacity: 1;
+            stroke-width: 3px;
+        }
+        
+        .link.dimmed {
+            stroke-opacity: 0.1;
+        }
+        
+        .node-label {
+            font-size: 11px;
+            font-weight: 600;
+            pointer-events: none;
+            text-shadow: 0 1px 2px white, 1px 0 2px white, -1px 0 2px white, 0 -1px 2px white;
+        }
+        
+        .legend {
+            position: absolute;
+            top: 30px;
+            right: 30px;
+            background: white;
+            padding: 15px;
+            border-radius: 6px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            font-size: 13px;
+            z-index: 10;
+        }
+        
+        .legend-item {
+            margin: 8px 0;
+            display: flex;
+            align-items: center;
+        }
+        
+        .legend-color {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            margin-right: 8px;
+            border: 2px solid #333;
+        }
+        
+        .tooltip-viz {
+            position: absolute;
+            padding: 10px;
+            background: rgba(0, 0, 0, 0.85);
+            color: white;
+            border-radius: 4px;
+            font-size: 12px;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s;
+            max-width: 200px;
+            z-index: 100;
+        }
+        
+        .network-instructions {
+            text-align: center;
+            color: #666;
+            font-size: 13px;
+            margin: 15px 0;
+            padding: 10px;
+            background: #e3f2fd;
+            border-radius: 5px;
+        }
+        
+        footer {
+            background: #333;
+            color: white;
+            text-align: center;
+            padding: 20px;
+            font-size: 0.9em;
+        }
+        
+        .key-findings {
+            background: #e8f5e9;
+            border-left: 4px solid #4caf50;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 5px;
+        }
+        
+        .key-findings h3 {
+            color: #2e7d32;
+            margin-bottom: 15px;
+        }
+        
+        .key-findings ul {
+            list-style-position: inside;
+            line-height: 1.8;
+        }
+        
+        .key-findings li {
+            margin-bottom: 10px;
+        }
+        
+        #network-container {
+            position: relative;
+        }
+        
+        .interactive-note {
+            background: #e3f2fd;
+            padding: 15px;
+            margin-top: 15px;
+            border-radius: 5px;
+            font-size: 0.9em;
+        }
+        
+        .interactive-note strong {
+            color: #1976d2;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📊 Cryptocurrency vs. Stock Market Analysis</h1>
+            <p>Comprehensive Visualization Dashboard - DS4200 Final Project</p>
+        </header>
+        
+        <!-- Visual Introduction Section -->
+        <div class="viz-section">
+            <h2>Visual Introduction</h2>
+            <p>
+                Our visualizations move from a broad look at market behavior to detailed comparisons that help answer our research questions. Since crypto is known for reacting strongly to major market events, we organized the figures to highlight how these events show up in price, volatility, correlation, and trading activity.
+            </p>
+            <p>
+                Across our analysis, we focus on several key events from the last five years:
+            </p>
+            <ul style="margin: 15px 0 15px 40px; line-height: 1.8;">
+                <li>The <strong>2021 crypto bull run</strong>, when BTC and ETH reached new highs</li>
+                <li>The <strong>Terra collapse in May 2022</strong>, which triggered a major drop across the crypto market</li>
+                <li>The broader <strong>2022 to 2023 crypto winter</strong>, marked by sharp declines</li>
+                <li>The <strong>FTX collapse in November 2022</strong>, which caused another wave of instability</li>
+                <li>Periods of <strong>global market stress</strong>, such as early 2022, when equity markets also declined</li>
+            </ul>
+            <p>
+                These events are important because they help us understand when crypto moves with the stock market and when it moves independently.
+            </p>
+            <p>
+                We start with overall price performance to see how strongly each asset moves over time. Then we compare their volatility, which directly answers how much more unstable crypto is compared to SPY. The volume–price plot helps us spot moments of intense trading around major events. The correlation heatmap shows when crypto and SPY move together or separately. Finally, the drivers network map connects the assets to the companies or platforms that influence their behavior, which helps explain why certain events have such large effects.
+            </p>
+            <p>
+                Together, these visualizations highlight how crypto reacts to major events, how it compares to the stock market, and how its behavior changes as the market shifts.
+            </p>
+        </div>
+        
+        <!-- Visualization 1: Market Performance Over Time -->
+        <div class="viz-section">
+            <h2>1. Market Performance Over Time</h2>
+            <p class="subtitle">Normalized closing prices with interactive filtering and zoom</p>
+            
+            <div class="viz-container">
+                <div id="timeSeriesChart"></div>
+                <div class="interactive-note">
+                    <strong>🎮 Interactive Features:</strong> 
+                    <span style="color: #1976d2;">Click legend to toggle assets</span> • 
+                    <span style="color: #1976d2;">Drag on chart to highlight time periods</span> • 
+                    Hover for detailed tooltips
+                </div>
+            </div>
+            
+            <div class="interpretation">
+                <h3>📈 Interpretation</h3>
+                <p><strong>Figure 1: Normalized Market Performance Over Time</strong> – This figure shows five years of relative price performance for SPY and major cryptocurrencies.</p>
+                <p>Figure 1 shows how SPY and the five cryptocurrencies changed over time after normalizing all assets to the same starting point. SPY stays within a steady band throughout the five-year period, while all cryptocurrencies show much sharper climbs and declines. For example, BTC, ETH, and BNB rise quickly during the 2021 bull market, then drop sharply during the 2022 crypto crash that followed events like the Terra collapse in May 2022. XRP and LTC show large swings during the same periods, although at different magnitudes. Some of these movements line up with market-wide events, such as the downturn in early 2022, while other periods show crypto moving independently of SPY, especially during crypto-specific shocks. This figure helps answer our first two research questions by highlighting the stronger volatility in crypto and showing that the connection between crypto and the stock market varies depending on the period.</p>
+            </div>
+        </div>
+        
+        <!-- Visualization 2: Volatility Distribution -->
+        <div class="viz-section">
+            <h2>2. Volatility Distribution Comparison</h2>
+            <p class="subtitle">30-day rolling volatility with interactive selection</p>
+            
+            <div class="viz-container">
+                <div id="volatilityChart"></div>
+            </div>
+            
+            <div class="interpretation">
+                <h3>📊 Interpretation</h3>
+                <p><strong>Figure 2: Volatility Distribution Across Assets</strong> – This figure compares 30-day rolling volatility across SPY and five cryptocurrencies.</p>
+                <p>Figure 2 summarizes the 30-day rolling volatility for each asset. SPY has the lowest and tightest volatility values, centered near 0.01. All five cryptocurrencies show much wider and higher distributions. ETH, XRP, and LTC display the most frequent high-volatility periods, reflecting major swings during 2021 and throughout the 2022 crypto downturn. Even BTC and BNB, which appear more stable than the other coins, still sit well above SPY. This figure directly answers the first research question by making it clear that every cryptocurrency in the dataset is significantly more volatile than the S&P 500.</p>
+            </div>
+        </div>
+        
+        <!-- Visualization 3: Volume-Price Relationship -->
+        <div class="viz-section">
+            <h2>3. Volume–Price Relationship</h2>
+            <p class="subtitle">Trading volume vs. price with brush selection and dynamic regression</p>
+            
+            <div class="viz-container">
+                <div id="volumePriceChart"></div>
+                <div class="interactive-note">
+                    <strong>🎮 Interactive Features:</strong> 
+                    <span style="color: #1976d2;">Drag to select and zoom regions</span> • 
+                    <span style="color: #1976d2;">Click legend to filter assets</span> • 
+                    <span style="color: #1976d2;">Selected points enlarge</span> • 
+                    Regression lines update dynamically
+                </div>
+            </div>
+            
+            <div class="interpretation">
+                <h3>💹 Interpretation</h3>
+                <p><strong>Figure 3: Volume–Price Relationship with Interactive Zoom and Filtering</strong> – This figure shows the relationship between trading volume and average price with interactive zoom and filtering.</p>
+                <p>Figure 3 compares trading volume to the average of daily high and low price for each asset. When focusing on BTC using the filtering tool, periods of high trading volume often match with surges in price, especially during the 2021 bull market when rising prices brought in heavy trading activity. Volume spikes also appear during major declines in mid-2022, when fear-driven selling increased activity across the market. These patterns relate to our third research question by showing how major events lead to both dramatic price movements and noticeable increases in trading volume.</p>
+            </div>
+        </div>
+        
+        <!-- Visualization 4: Asset Correlation Heatmap -->
+        <div class="viz-section">
+            <h2>4. Asset Correlation Heatmap</h2>
+            <p class="subtitle">Daily return correlations between all assets</p>
+            
+            <div class="viz-container">
+                <canvas id="correlationChart"></canvas>
+            </div>
+            
+            <div class="interpretation">
+                <h3>🔗 Interpretation</h3>
+                <p><strong>Figure 4: Daily Return Correlation Heatmap</strong> – This figure shows correlations between daily returns for SPY and the five cryptocurrencies.</p>
+                <p>Figure 4 shows that cryptocurrencies have relatively strong correlations with one another, especially BTC, ETH, LTC, and BNB. Their correlations with SPY are moderate, which means crypto and the stock market only move together to a limited extent. XRP stands out with weaker correlations to both SPY and the other coins. This figure answers the second research question by showing that the connection between crypto and the stock market exists but is not stable or strong. It also supports the idea seen in Figure 1 that crypto sometimes moves with broader market trends, such as during early 2022, but often shows independent behavior during crypto-specific events.</p>
+            </div>
+        </div>
+        
+        <!-- Visualization 5: Drivers Network Map -->
+        <div class="viz-section">
+            <h2>5. Drivers Network Map (D3.js)</h2>
+            <p class="subtitle">Force-directed network showing asset-driver relationships</p>
+            
+            <div class="network-instructions">
+                <strong>🎯 Interactive Features:</strong> Hover over nodes to highlight connections • Click to focus • 
+                Drag nodes to reposition
+            </div>
+            
+            <div class="viz-container">
+                <div id="network-container">
+                    <div id="network"></div>
+                    <div class="legend">
+                        <div style="font-weight: bold; margin-bottom: 10px;">Node Types</div>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background-color: #4CAF50;"></div>
+                            <span>Equity (SPY)</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background-color: #2196F3;"></div>
+                            <span>Cryptocurrency</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background-color: #FF9800;"></div>
+                            <span>Driver/Company</span>
+                        </div>
+                    </div>
+                    <div class="tooltip-viz" id="tooltip"></div>
+                </div>
+            </div>
+            
+            <div class="key-findings">
+                <h3>🔑 Interpretation</h3>
+                <p><strong>Figure 5: Drivers Network Map</strong> – This figure maps each asset to the companies and platforms most associated with it.</p>
+                <p>Figure 5 links each cryptocurrency to the companies and organizations that influence it. BTC connects to drivers like MicroStrategy and Coinbase, reflecting how corporate adoption and exchange activity have shaped its price. XRP connects strongly to Ripple, which aligns with market reactions to Ripple's legal developments in 2021 and 2023. Several assets share ties with Coinbase and Binance, which helps explain why exchange-related events, such as the 2022 Binance–FTX fallout, affected multiple coins at the same time. SPY's drivers include large index companies like Apple and Microsoft, which influence the stock market in different ways. This figure supports the third research question by showing how shocks linked to specific companies or platforms can trigger large market movements.</p>
+                <ul>
+                    <li><strong>Coinbase as Central Hub:</strong> Connected to 4 out of 5 cryptocurrencies, highlighting its role 
+                    as critical infrastructure. Any regulatory or operational issues could create cascading effects across multiple 
+                    crypto assets simultaneously.</li>
+                    <li><strong>Binance's Dual Influence:</strong> Acts as both exchange platform and token issuer (BNB), creating 
+                    unique interdependency where its operational health affects multiple assets.</li>
+                    <li><strong>Traditional vs. Crypto Separation:</strong> SPY stands isolated, connected only to Apple, Microsoft, 
+                    and Amazon—demonstrating the distinct nature of traditional equity markets versus the interconnected crypto space.</li>
+                    <li><strong>Structural Risk Concentration:</strong> Multiple cryptocurrencies depend on the same exchanges and 
+                    service providers, meaning a failure at one driver entity could create systemic risk across the entire crypto 
+                    portfolio.</li>
+                    <li><strong>Limited True Diversification:</strong> The shared infrastructure dependencies reveal that holding 
+                    multiple cryptocurrencies provides less diversification than price movements alone might suggest.</li>
+                </ul>
+            </div>
+        </div>
+        
+        <div class="content-section">
+            <h2>Conclusion</h2>
+            <p>
+                Across all five visualizations, we were able to answer our research questions by examining how SPY and major cryptocurrencies behaved over the last five years. Our volatility comparison showed that every cryptocurrency in our dataset is much more volatile than the S&P 500. This supports what we saw in the normalized price chart, where assets like BTC, ETH, and BNB had large surges during the 2021 bull run and sharp declines during the 2022 crash, while SPY moved in a much tighter and steadier range.
+            </p>
+            <p>
+                We also found that the connection between crypto and the stock market shifts depending on the period. The correlation heatmap showed that cryptocurrencies move more closely with each other than with SPY. Some periods line up, such as early 2022 when both markets fell, but many movements are driven by crypto-specific events. The Terra collapse in May 2022 and the FTX collapse in November 2022 both triggered major drops across the crypto market while SPY did not fall in the same way. These patterns support the idea that crypto behaves like a separate market for most of the time.
+            </p>
+            <p>
+                The volume and driver network visualizations help explain where these responses come from. Trading activity tends to increase during major swings, showing how sentiment and fear can accelerate price movement. The network map also shows that many cryptocurrencies share ties to exchanges like Binance and Coinbase, which explains why events involving these companies often affect multiple coins at once. SPY, on the other hand, reflects major corporations that influence the broader stock market in a very different way.
+            </p>
+            <p>
+                Overall, we found that crypto is significantly more volatile, only loosely connected to the stock market, and highly sensitive to events within the crypto ecosystem. These findings help clarify how digital assets behave in comparison to traditional equities.
+            </p>
+        </div>
+        
+        <footer>
+            <p>&copy; 2025 DS4200 Final Project | Cryptocurrency vs. Stock Market Volatility Analysis</p>
+            <p style="margin-top: 10px; font-size: 0.85em; opacity: 0.8;">
+                Data Source: Yahoo Finance (yfinance) | Visualization Tools: D3.js, Vega-Lite (Altair), Chart.js
+            </p>
+        </footer>
+    </div>
+    
+    <script>
+        // ===== LOAD ENHANCED ALTAIR VISUALIZATIONS =====
+        
+        // Load Time Series with Enhanced Interactions
+        fetch('time_series_spec_enhanced.json')
+            .then(response => response.json())
+            .then(spec => {
+                vegaEmbed('#timeSeriesChart', spec, {
+                    actions: {export: true, source: false, compiled: false, editor: false}
+                });
+            })
+            .catch(error => console.error('Error loading time series:', error));
+        
+        // Load Enhanced Volatility Chart - Simple inline version
+        const volatilitySpec = {
+            "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
+            "data": {"url": "volatility_data.csv"},
+            "mark": {"type": "boxplot", "size": 50},
+            "encoding": {
+                "x": {
+                    "field": "Ticker",
+                    "type": "nominal",
+                    "title": "Asset",
+                    "sort": ["SPY", "BTC-USD", "ETH-USD", "XRP-USD", "LTC-USD", "BNB-USD"],
+                    "axis": {"labelAngle": -45}
+                },
+                "y": {
+                    "field": "Rolling_Volatility",
+                    "type": "quantitative",
+                    "title": "30-Day Rolling Volatility",
+                    "scale": {"domain": [0, 0.15]}
+                },
+                "color": {
+                    "field": "Ticker",
+                    "type": "nominal",
+                    "scale": {"scheme": "category10"},
+                    "legend": {"title": "Asset"}
+                }
+            },
+            "width": 700,
+            "height": 400,
+            "title": "Volatility Distribution Comparison"
+        };
+        
+        vegaEmbed('#volatilityChart', volatilitySpec, {
+            actions: {export: true, source: false, compiled: false, editor: false}
+        }).catch(error => {
+            console.error('Error rendering volatility chart:', error);
+            document.getElementById('volatilityChart').innerHTML = 
+                '<p style="color: red; padding: 20px;">Error: ' + error.message + '</p>';
+        });
+        
+        // Load Enhanced Volume-Price Chart
+        fetch('volume_price_spec_enhanced.json')
+            .then(response => response.json())
+            .then(spec => {
+                vegaEmbed('#volumePriceChart', spec, {
+                    actions: {export: true, source: false, compiled: false, editor: false}
+                });
+            })
+            .catch(error => console.error('Error loading volume-price chart:', error));
+        
+        // ===== VISUALIZATION 4: Correlation Heatmap =====
+        const correlationCtx = document.getElementById('correlationChart').getContext('2d');
+        
+        const assets = ["BNB-USD", "BTC-USD", "ETH-USD", "LTC-USD", "SPY", "XRP-USD"];
+        const correlationMatrix = [[1.0, 0.6291093160456803, 0.6379804458366646, 0.5862309795889612, 0.2546823549655465, 0.46624069034046767], [0.6291093160456803, 1.0, 0.8033039702904642, 0.7077641119192842, 0.3754115624374634, 0.5447056263513879], [0.6379804458366646, 0.8033039702904642, 1.0, 0.736727999190702, 0.3931351340788075, 0.5608781179616397], [0.5862309795889612, 0.7077641119192842, 0.736727999190702, 1.0, 0.33564867508728363, 0.5937281464187953], [0.2546823549655465, 0.3754115624374634, 0.3931351340788075, 0.33564867508728363, 1.0, 0.25834714202006714], [0.46624069034046767, 0.5447056263513879, 0.5608781179616397, 0.5937281464187953, 0.25834714202006714, 1.0]];
+        
+        const heatmapData = [];
+        for (let i = 0; i < assets.length; i++) {
+            for (let j = 0; j < assets.length; j++) {
+                heatmapData.push({
+                    x: assets[j],
+                    y: assets[i],
+                    v: correlationMatrix[i][j]
+                });
+            }
+        }
+        
+        const correlationChart = new Chart(correlationCtx, {
+            type: 'matrix',
+            data: {
+                datasets: [{
+                    label: 'Correlation',
+                    data: heatmapData,
+                    backgroundColor(context) {
+                        const value = context.dataset.data[context.dataIndex].v;
+                        const alpha = Math.abs(value);
+                        return value >= 0 
+                            ? `rgba(244, 67, 54, ${alpha})`
+                            : `rgba(33, 150, 243, ${alpha})`;
+                    },
+                    borderWidth: 1,
+                    borderColor: 'white',
+                    width: ({chart}) => (chart.chartArea || {}).width / assets.length - 1,
+                    height: ({chart}) => (chart.chartArea || {}).height / assets.length - 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                aspectRatio: 1,
+                plugins: {
+                    title: {
+                        display: true,
+                        text: 'Correlation Heatmap of Daily Returns',
+                        font: { size: 18 }
+                    },
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        callbacks: {
+                            title() { return ''; },
+                            label(context) {
+                                const item = context.dataset.data[context.dataIndex];
+                                return `${item.y} vs ${item.x}: ${item.v.toFixed(2)}`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        type: 'category',
+                        labels: assets,
+                        offset: true,
+                        ticks: {
+                            display: true
+                        },
+                        grid: {
+                            display: false
+                        }
+                    },
+                    y: {
+                        type: 'category',
+                        labels: assets,
+                        offset: true,
+                        reverse: true,
+                        ticks: {
+                            display: true
+                        },
+                        grid: {
+                            display: false
+                        }
+                    }
+                }
+            }
+        });
+        
+        // ===== VISUALIZATION 5: Drivers Network Map (D3.js) =====
+        const drivers = {
+            "SPY": ["Apple", "Microsoft", "Amazon"],
+            "BTC-USD": ["Coinbase", "MicroStrategy", "Nvidia"],
+            "ETH-USD": ["Coinbase", "Lido Finance", "Consensys"],
+            "XRP-USD": ["Ripple", "Coinbase", "Binance"],
+            "LTC-USD": ["Coinbase", "Antpool", "Bitmain"],
+            "BNB-USD": ["Binance", "Binance Smart Chain projects", "Paxos"]
+        };
+        
+        const nodes = [];
+        const links = [];
+        const node_ids = new Set();
+        
+        for (const [ticker, driverList] of Object.entries(drivers)) {
+            if (!node_ids.has(ticker)) {
+                const node_type = ticker === "SPY" ? "equity" : "crypto";
+                nodes.push({
+                    id: ticker,
+                    name: ticker,
+                    type: node_type,
+                    group: node_type === "equity" ? 1 : 2
+                });
+                node_ids.add(ticker);
+            }
+        }
+        
+        for (const [ticker, driverList] of Object.entries(drivers)) {
+            for (const driver of driverList) {
+                if (!node_ids.has(driver)) {
+                    nodes.push({
+                        id: driver,
+                        name: driver,
+                        type: "driver",
+                        group: 3
+                    });
+                    node_ids.add(driver);
+                }
+                
+                links.push({
+                    source: ticker,
+                    target: driver,
+                    value: 1
+                });
+            }
+        }
+        
+        const networkData = { nodes, links };
+        
+        const width = 1000;
+        const height = 700;
+        
+        const svg = d3.select("#network")
+            .append("svg")
+            .attr("width", width)
+            .attr("height", height)
+            .attr("viewBox", [0, 0, width, height]);
+        
+        const colorScale = d3.scaleOrdinal()
+            .domain(["equity", "crypto", "driver"])
+            .range(["#4CAF50", "#2196F3", "#FF9800"]);
+        
+        const simulation = d3.forceSimulation(networkData.nodes)
+            .force("link", d3.forceLink(networkData.links)
+                .id(d => d.id)
+                .distance(80)
+            )
+            .force("charge", d3.forceManyBody()
+                .strength(-300)
+            )
+            .force("center", d3.forceCenter(width / 2, height / 2))
+            .force("collision", d3.forceCollide().radius(30));
+        
+        const link = svg.append("g")
+            .selectAll("line")
+            .data(networkData.links)
+            .join("line")
+            .attr("class", "link")
+            .attr("stroke-width", 2);
+        
+        const node = svg.append("g")
+            .selectAll("g")
+            .data(networkData.nodes)
+            .join("g")
+            .attr("class", "node")
+            .call(drag(simulation));
+        
+        node.append("circle")
+            .attr("r", d => d.type === "driver" ? 10 : 15)
+            .attr("fill", d => colorScale(d.type))
+            .attr("stroke", "#fff")
+            .attr("stroke-width", 2);
+        
+        node.append("text")
+            .attr("class", "node-label")
+            .attr("dx", 0)
+            .attr("dy", d => d.type === "driver" ? -15 : -20)
+            .attr("text-anchor", "middle")
+            .text(d => d.name)
+            .style("font-size", d => d.type === "driver" ? "10px" : "12px");
+        
+        const tooltip = d3.select("#tooltip");
+        
+        node.on("mouseover", function(event, d) {
+            const connectedNodes = new Set();
+            connectedNodes.add(d.id);
+            
+            link.classed("dimmed", l => {
+                if (l.source.id === d.id || l.target.id === d.id) {
+                    connectedNodes.add(l.source.id);
+                    connectedNodes.add(l.target.id);
+                    return false;
+                }
+                return true;
+            })
+            .classed("highlighted", l => l.source.id === d.id || l.target.id === d.id);
+            
+            node.classed("highlighted", n => connectedNodes.has(n.id))
+                .style("opacity", n => connectedNodes.has(n.id) ? 1 : 0.3);
+            
+            const connections = networkData.links
+                .filter(l => l.source.id === d.id || l.target.id === d.id)
+                .map(l => l.source.id === d.id ? l.target.name : l.source.name);
+            
+            tooltip.style("opacity", 1)
+                .html(`
+                    <strong>${d.name}</strong><br>
+                    Type: ${d.type}<br>
+                    Connections: ${connections.length}<br>
+                    <small>${connections.join(", ")}</small>
+                `)
+                .style("left", (event.pageX + 10) + "px")
+                .style("top", (event.pageY - 10) + "px");
+        })
+        .on("mouseout", function() {
+            link.classed("dimmed", false)
+                .classed("highlighted", false);
+            node.classed("highlighted", false)
+                .style("opacity", 1);
+            tooltip.style("opacity", 0);
+        });
+        
+        simulation.on("tick", () => {
+            link
+                .attr("x1", d => d.source.x)
+                .attr("y1", d => d.source.y)
+                .attr("x2", d => d.target.x)
+                .attr("y2", d => d.target.y);
+            
+            node
+                .attr("transform", d => `translate(${d.x},${d.y})`);
+        });
+        
+        function drag(simulation) {
+            function dragstarted(event) {
+                if (!event.active) simulation.alphaTarget(0.3).restart();
+                event.subject.fx = event.subject.x;
+                event.subject.fy = event.subject.y;
+            }
+            
+            function dragged(event) {
+                event.subject.fx = event.x;
+                event.subject.fy = event.y;
+            }
+            
+            function dragended(event) {
+                if (!event.active) simulation.alphaTarget(0);
+                event.subject.fx = null;
+                event.subject.fy = null;
+            }
+            
+            return d3.drag()
+                .on("start", dragstarted)
+                .on("drag", dragged)
+                .on("end", dragended);
+        }
+        
+        console.log("All visualizations initialized!");
+    </script>
+</body>
+</html>
